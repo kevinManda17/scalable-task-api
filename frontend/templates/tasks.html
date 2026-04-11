@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Tasks</h1>
+    <div>
+        <button id="logout">Déconnexion</button>
+    </div>
+    <div id="search-section">
+        <input id="search" placeholder="Rechercher des tâches..." type="text">
+        <select id="filter">
+            <option value="">Toutes</option>
+            <option value="completed=true">Terminées</option>
+            <option value="completed=false">En cours</option>
+        </select>
+    </div>
+    <form id="create-task-form">
+        <input id="title" name="title" placeholder="Titre" required>
+        <input id="description" name="description" placeholder="Description">
+        <button type="submit">Ajouter une tâche</button>
+    </form>
+    <h2>Mes tâches</h2>
+    <ul id="tasks"></ul>
+    <p id="message"></p>
+</div>
+
+<script>
+const getCookie = name => document.cookie.split('; ').find(row => row.startsWith(name + '='))?.split('=')[1];
+const csrftoken = getCookie('csrftoken');
+const tasksList = document.getElementById('tasks');
+const message = document.getElementById('message');
+
+const fetchTasks = async () => {
+    const search = document.getElementById('search').value;
+    const filter = document.getElementById('filter').value;
+    let url = '/api/tasks/?ordering=-created_at';
+
+    if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+    }
+    if (filter) {
+        url += `&${filter}`;
+    }
+
+    const response = await fetch(url, { credentials: 'include' });
+    if (!response.ok) {
+        message.textContent = 'Veuillez vous connecter.';
+        return;
+    }
+    const data = await response.json();
+    tasksList.innerHTML = '';
+    data.forEach(task => {
+        const li = document.createElement('li');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = task.completed;
+        checkbox.addEventListener('change', async () => {
+            await fetch(`/api/tasks/${task.id}/`, {
+                method: 'PATCH',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken,
+                },
+                body: JSON.stringify({ completed: checkbox.checked }),
+            });
+            fetchTasks();
+        });
+        const span = document.createElement('span');
+        span.textContent = `${task.title} - ${task.description || ''}`;
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Supprimer';
+        deleteButton.addEventListener('click', async () => {
+            await fetch(`/api/tasks/${task.id}/`, {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: { 'X-CSRFToken': csrftoken },
+            });
+            fetchTasks();
+        });
+        li.append(checkbox, span, deleteButton);
+        tasksList.appendChild(li);
+    });
+};
+
+fetchTasks();
+
+document.getElementById('search').addEventListener('input', fetchTasks);
+document.getElementById('filter').addEventListener('change', fetchTasks);
+
+document.getElementById('create-task-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const title = document.getElementById('title').value;
+    const description = document.getElementById('description').value;
+    const response = await fetch('/api/tasks/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify({ title, description }),
+    });
+    if (response.ok) {
+        document.getElementById('title').value = '';
+        document.getElementById('description').value = '';
+        fetchTasks();
+    } else {
+        message.textContent = 'Impossible de créer la tâche. Vérifie que tu es connecté.';
+    }
+});
+
+document.getElementById('logout').addEventListener('click', async () => {
+    await fetch('/api/accounts/logout/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-CSRFToken': csrftoken },
+    });
+    window.location.href = '/login/';
+});
+</script>
+
+<style>
+.btn {
+    display: inline-block;
+    padding: 10px 15px;
+    margin: 5px;
+    background: #0d6efd;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background: #0b5ed7;
+}
+
+#search-section {
+    margin: 20px 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+#search {
+    flex: 1;
+    padding: 8px;
+    font-size: 1rem;
+}
+
+#filter {
+    padding: 8px;
+    font-size: 1rem;
+}
+</style>
+
+{% endblock %}
