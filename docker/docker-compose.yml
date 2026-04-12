@@ -35,5 +35,19 @@ services:
     depends_on:
       - web
 
+  locust:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.locust
+    ports:
+      - "8089:8089"
+    volumes:
+      - ../tests/locust:/mnt/locust
+    command: ["-f", "/mnt/locust/locustfile.py", "--host", "http://web:8000"]
+    depends_on:
+      - web
+    environment:
+      - LOCUST_WEB_UI=true
+
 volumes:
   postgres_data:
