@@ -1,53 +1,139 @@
-services:
-  web:
-    build:
-      context: ../
-      dockerfile: docker/Dockerfile
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - ../backend:/app
-    ports:
-      - "8000:8000"
-    env_file:
-      - ../.env
-    depends_on:
-      - db
-      - redis
+version: '3.9'
 
+services:
+  # =================== PostgreSQL Database ===================
   db:
-    image: postgres:15
-    env_file:
-      - ../.env
+    image: postgres:15-alpine
+    container_name: taskapi_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-taskapi_db}
+      POSTGRES_USER: ${POSTGRES_USER:-taskapi_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taskapi_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskapi_network
 
+  # =================== Redis Cache ===================
   redis:
-    image: redis:7
+    image: redis:7-alpine
+    container_name: taskapi_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ""
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskapi_network
 
+  # =================== Django Web Server ===================
+  web:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    container_name: taskapi_web
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 60"
+    volumes:
+      - ../backend:/app
+      - static_volume:/app/staticfiles
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - taskapi_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/accounts/me/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =================== Nginx Reverse Proxy ===================
   nginx:
-    image: nginx:latest
+    image: nginx:alpine
+    container_name: taskapi_nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_volume:/app/staticfiles:ro
     depends_on:
       - web
+    networks:
+      - taskapi_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # =================== Locust Load Testing ===================
   locust:
     build:
       context: ../
       dockerfile: docker/Dockerfile.locust
+    container_name: taskapi_locust
+    command: >
+      locust -f /mnt/locust/locustfile.py
+      --host=http://web:8000
+      --users=10
+      --spawn-rate=1
+      --run-time=300s
+      --headless
+      -u /mnt/locust/results
     ports:
       - "8089:8089"
     volumes:
-      - ../tests/locust:/mnt/locust
-    command: ["-f", "/mnt/locust/locustfile.py", "--host", "http://web:8000"]
+      - ../tests/locustfile.py:/mnt/locust/locustfile.py:ro
+      - locust_results:/mnt/locust/results
     depends_on:
-      - web
+      web:
+        condition: service_healthy
+    networks:
+      - taskapi_network
     environment:
-      - LOCUST_WEB_UI=true
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
 
+# =================== Volumes ===================
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  static_volume:
+    driver: local
+  locust_results:
+    driver: local
+
+# =================== Networks ===================
+networks:
+  taskapi_network:
+    driver: bridge

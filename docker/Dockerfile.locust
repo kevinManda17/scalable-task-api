@@ -2,11 +2,20 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt locust
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY tests/locust /mnt/locust
+# Copier requirements et installer les dépendances
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt locust>=2.15.0
+
+# Copier le script locust
+COPY tests/locustfile.py /mnt/locust/locustfile.py
+
+WORKDIR /mnt/locust
 
 EXPOSE 8089
 
-ENTRYPOINT ["locust"]
+# Commande par défaut pour démarrer Locust
+CMD ["locust", "-f", "locustfile.py", "--host", "http://localhost:8000"]

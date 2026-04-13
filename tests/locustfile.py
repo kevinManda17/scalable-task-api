@@ -1,5 +1,6 @@
 import json
-from locust import HttpUser, task, between
+import random
+from locust import HttpUser, task, between, events
 from locust.exception import StopUser
 
 
@@ -15,31 +16,30 @@ class TaskAPIUser(HttpUser):
 
         if response.status_code == 200:
             data = response.json()
-            self.token = data.get("token")
-            self.user_id = data.get("user_id")
+            self.token = data.get("access") or data.get("token")
+            self.user_id = data.get("user", {}).get("id") if isinstance(data.get("user"), dict) else None
             if not self.token:
                 raise StopUser("Login failed - no token received")
         else:
-            raise StopUser(f"Login failed with status {response.status_code}")
+            raise StopUser(f"Login failed with status {response.status_code}: {response.text}")
 
     @task(3)
     def get_tasks(self):
         """Get user's tasks"""
-        headers = {"Authorization": f"Token {self.token}"}
+        headers = {"Authorization": f"Bearer {self.token}"}
         self.client.get("/api/tasks/", headers=headers, name="get_tasks")
 
     @task(2)
     def create_task(self):
         """Create a new task"""
         headers = {
-            "Authorization": f"Token {self.token}",
+            "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json"
         }
 
-        import random
         task_data = {
-            "title": f"Load Test Task {random.randint(1, 1000)}",
-            "description": "Task created during load testing",
+            "title": f"Load Test Task {random.randint(1, 1000000)}",
+            "description": f"Task created during load testing at {random.randint(1, 100)}",
             "completed": random.choice([True, False])
         }
 
@@ -50,25 +50,27 @@ class TaskAPIUser(HttpUser):
             name="create_task"
         )
 
-        if response.status_code == 201:
-            # Store task ID for potential updates/deletes
-            data = response.json()
-            self.last_task_id = data.get("id")
+        if response.status_code in [201, 200]:
+            try:
+                data = response.json()
+                self.last_task_id = data.get("id")
+            except:
+                pass
 
     @task(1)
     def update_task(self):
         """Update an existing task"""
-        if not hasattr(self, 'last_task_id'):
+        if not hasattr(self, 'last_task_id') or not self.last_task_id:
             return
 
         headers = {
-            "Authorization": f"Token {self.token}",
+            "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json"
         }
 
         update_data = {
-            "title": "Updated Task Title",
-            "completed": True
+            "title": f"Updated Task {random.randint(1, 1000)}",
+            "completed": random.choice([True, False])
         }
 
         self.client.patch(
@@ -81,10 +83,10 @@ class TaskAPIUser(HttpUser):
     @task(1)
     def delete_task(self):
         """Delete a task"""
-        if not hasattr(self, 'last_task_id'):
+        if not hasattr(self, 'last_task_id') or not self.last_task_id:
             return
 
-        headers = {"Authorization": f"Token {self.token}"}
+        headers = {"Authorization": f"Bearer {self.token}"}
 
         self.client.delete(
             f"/api/tasks/{self.last_task_id}/",
@@ -92,9 +94,31 @@ class TaskAPIUser(HttpUser):
             name="delete_task"
         )
 
-        # Remove the task ID after deletion
         if hasattr(self, 'last_task_id'):
-            delattr(self, 'last_task_id')
+            self.last_task_id = None
+
+    @task(1)
+    def filter_tasks(self):
+        """Filter tasks by completion status"""
+        headers = {"Authorization": f"Bearer {self.token}"}
+        completed = random.choice([True, False])
+        self.client.get(
+            f"/api/tasks/?completed={completed}",
+            headers=headers,
+            name="filter_tasks"
+        )
+
+    @task(1)
+    def search_tasks(self):
+        """Search tasks"""
+        headers = {"Authorization": f"Bearer {self.token}"}
+        search_terms = ["test", "load", "task", "performance"]
+        search_term = random.choice(search_terms)
+        self.client.get(
+            f"/api/tasks/?search={search_term}",
+            headers=headers,
+            name="search_tasks"
+        )
 
 
 class WebsiteUser(HttpUser):
