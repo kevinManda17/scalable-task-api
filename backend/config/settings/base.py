@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'change-me-in-production')
@@ -59,9 +60,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'app'),
-        'USER': os.getenv('POSTGRES_USER', 'user'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'password'),
+        'NAME': os.getenv('POSTGRES_DB', 'taskapi_db'),
+        'USER': os.getenv('POSTGRES_USER', 'taskapi_user'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgre'),
         'HOST': os.getenv('POSTGRES_HOST', 'db'),
         'PORT': int(os.getenv('POSTGRES_PORT', 5432)),
     }
@@ -128,3 +129,13 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False').lower() == 'true'
 X_FRAME_OPTIONS = 'DENY'
+
+
+print("DB NAME =", os.getenv("POSTGRES_DB"))
+print("DB USER =", os.getenv("POSTGRES_USER"))
+print("DB PASSWORD =", os.getenv("POSTGRES_PASSWORD"))
+print("DB HOST =", os.getenv("POSTGRES_HOST"))
+print("DB PORT =", os.getenv("POSTGRES_PORT"))
+print("REDIS URL =", os.getenv("REDIS_URL"))
+
+

@@ -1,19 +1,19 @@
-Django==5.0.4
-djangorestframework==3.15.1
-djangorestframework-simplejwt==2.3.0
-django-filter==24.2
-django-redis==6.0.0
-psycopg2-binary==2.9.9
-gunicorn==22.0.0
-redis==5.0.4
-celery==5.4.5
-python-dotenv==1.0.1
+Django
+djangorestframework
+djangorestframework-simplejwt
+django-filter
+django-redis
+psycopg2-binary
+gunicorn
+redis
+celery
+python-dotenv
 
 # Development dependencies
-black==24.4.2
-flake8==7.1.0
-isort==5.13.2
-coverage==7.5.3
-locust==2.29.0
-pytest==8.4.2
-pytest-django==4.9.2
+black
+flake8
+isort
+coverage
+locust
+pytest
+pytest-django
