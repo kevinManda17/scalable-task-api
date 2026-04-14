@@ -33,7 +33,7 @@ let userId = null;
 
 export function setup() {
   // Authentification avant les tests
-  console.log('🔐 Authentification...');
+  console.log('Authentification...');
   const loginRes = http.post(`${BASE_URL}/api/accounts/login/`, {
     username: USERNAME,
     password: PASSWORD,

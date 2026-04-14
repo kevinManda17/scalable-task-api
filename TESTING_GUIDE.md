@@ -1,52 +1,71 @@
-# Guide de Test de l'Application
+# Guide de test de l'application
 
-Ce guide vous montre comment tester l'application avec des données de test et des tests de charge avec k6.
+Ce guide explique comment tester cette application en local en s'appuyant sur Docker, les scripts de démarrage et les outils de charge disponibles.
 
-## 📋 Prérequis
+## Prérequis
 
-- Django
-- Python 3.8+
-- k6 (pour les tests de charge) - [Installer k6](https://k6.io/docs/getting-started/installation)
-- PostgreSQL (ou votre BD configurée)
+- Docker
+- Docker Compose
+- k6 (optionnel pour les tests de charge)
+- Locust (optionnel pour les tests de charge)
 
-## 🚀 Mise en Place
+## Mise en place
 
-### 1. Appliquer les migrations
+1. Copier le fichier d'environnement :
 
-```powershell
-# Windows
-.\test.ps1 migrate
+```bash
+copy .env.example .env
+```
 
-# Ou directement
+2. Démarrer les services Docker :
+
+```bash
+docker compose -f docker/docker-compose.yml up --build -d
+```
+
+3. Appliquer les migrations :
+
+```bash
+docker compose -f docker/docker-compose.yml exec web python manage.py migrate --settings=config.settings.dev
+```
+
+4. Peupler la base de données :
+
+```bash
+docker compose -f docker/docker-compose.yml exec web python manage.py shell --settings=config.settings.dev < backend/populate_db.py
+```
+
+5. Créer un superutilisateur :
+
+```bash
+docker compose -f docker/docker-compose.yml exec web python manage.py createsuperuser --username admin --email admin@example.com --noinput --settings=config.settings.dev || true
+
+docker compose -f docker/docker-compose.yml exec web bash -c 'echo "from django.contrib.auth import get_user_model; User = get_user_model(); user = User.objects.get(username=\"admin\"); user.set_password(\"admin123\"); user.save();" | python manage.py shell --settings=config.settings.dev'
+```
+
+### Scripts de démarrage rapide
+
+- Sur macOS/Linux : `./quickstart.sh`
+- Sur Windows : `./quickstart.ps1`
+
+Ces scripts démarrent les services Docker, appliquent les migrations et remplissent la base de données.
+
+## Tests unitaires
+
+Pour exécuter les tests Django :
+
+```bash
+docker compose -f docker/docker-compose.yml exec web python manage.py test --settings=config.settings.test
+```
+
+Si vous utilisez un environnement Python local :
+
+```bash
 cd backend
-python manage.py makemigrations
-python manage.py migrate
+python manage.py test --settings=config.settings.test
 ```
 
-### 2. Remplir la base de données avec des données de test
-
-```powershell
-# Windows
-.\test.ps1 seed
-
-# Ou directement
-cd backend
-python manage.py shell < populate_db.py
-```
-
-Cela créera :
-- **1 super utilisateur** : `admin` / `admin123`
-- **10 utilisateurs de test** : `user1` à `user10` / `password123`
-- **30-80 tâches** réparties entre les utilisateurs
-
-### 3. Configuration complète (migrations + seed)
-
-```powershell
-# Windows
-.\test.ps1 setup
-```
-
-## 🧪 Tester les Endpoints Manuellement
+## Tester les Endpoints Manuellement
 
 ### Authentification
 
@@ -90,7 +109,7 @@ Invoke-WebRequest -Uri "http://localhost:8000/api/tasks/" `
   -Body $body
 ```
 
-## 📊 Tests de Charge avec k6
+## Tests de charge
 
 ### Installation de k6
 
@@ -119,12 +138,14 @@ sudo apt-get install k6
 
 ### Exécuter les tests k6
 
-```powershell
-# Windows
-.\test.ps1 test
+```bash
+k6 run tests/k6_tests.js
+```
 
-# Ou directement
-k6 run k6_tests.js
+Ou avec Docker :
+
+```bash
+docker run --rm -i grafana/k6 run - < tests/k6_tests.js
 ```
 
 ### Configurer l'URL de base
@@ -134,7 +155,7 @@ k6 run k6_tests.js
 k6 run -e BASE_URL=http://api.example.com k6_tests.js
 ```
 
-## 📈 Interpréter les Résultats k6
+## Interpréter les résultats k6
 
 Le script teste :
 
@@ -166,27 +187,18 @@ Le script teste :
 - **errors** : Taux d'erreur
   - Objectif : < 10%
 
-## 🎯 Plan de Test Recommandé
+## Plan de test recommandé
 
-```powershell
-# 1. Nettoyer
-.\test.ps1 clean
+```bash
+copy .env.example .env
 
-# 2. Migrer
-.\test.ps1 migrate
-
-# 3. Remplir les données
-.\test.ps1 seed
-
-# 4. Démarrer le serveur Django
-cd backend
-python manage.py runserver
-
-# 5. Dans un autre terminal, lancer les tests k6
-.\test.ps1 test
+docker compose -f docker/docker-compose.yml up --build -d
+docker compose -f docker/docker-compose.yml exec web python manage.py migrate --settings=config.settings.dev
+docker compose -f docker/docker-compose.yml exec web python manage.py shell --settings=config.settings.dev < backend/populate_db.py
+docker compose -f docker/docker-compose.yml exec web python manage.py test --settings=config.settings.test
 ```
 
-## 🐛 Dépannage
+## Dépannage
 
 ### "Template Does Not Exist" ?
 Cela signifie que Django ne trouve pas les templates. Assurez-vous que :
@@ -201,13 +213,13 @@ Cela signifie que Django ne trouve pas les templates. Assurez-vous que :
 
 ### Erreur "User matching query does not exist" dans k6 ?
 - Assurez-vous que l'utilisateur `user1` existe
-- Exécutez `.\test.ps1 seed` pour créer les utilisateurs
+- Exécutez le script de peuplement de la base de données pour créer les utilisateurs
 
 ### k6 non trouvé ?
 - Vérifiez que k6 est installé : `k6 version`
 - Ajoutez k6 à votre `PATH` si nécessaire
 
-## 💡 Personnaliser les Tests
+## Personnaliser les tests
 
 Vous pouvez modifier `k6_tests.js` pour ajuster :
 
@@ -232,7 +244,7 @@ Vous pouvez modifier `k6_tests.js` pour ajuster :
 3. **Les utilisateurs de test**
    - Modifiez `USERNAME` et `PASSWORD` en haut du fichier
 
-## 📝 Exemples d'Utilisation
+## Exemples d'utilisation
 
 ### Test simple (5 utilisateurs pendant 30 secondes)
 ```powershell

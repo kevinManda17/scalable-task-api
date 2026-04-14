@@ -2,26 +2,70 @@
 
 A scalable backend API built with Django, Docker, and a cloud-ready architecture.
 
-This project is designed to manage users and tasks while supporting concurrent users, ensuring scalability, and maintaining a fully containerized environment. All operations are executed using Docker. No local Python execution is required.
+Ce projet gère les utilisateurs et les tâches tout en offrant une architecture conteneurisée prête pour une production cloud.
 
-Architecture:
+---
+
+## Table des matières
+
+- [Vue d'ensemble](#vue-densemble)
+- [Architecture](#architecture)
+- [Fonctionnalités](#fonctionnalités)
+- [Stack technique](#stack-technique)
+- [Structure du projet](#structure-du-projet)
+- [Prérequis](#prérequis)
+- [Installation et démarrage](#installation-et-démarrage)
+- [Configuration](#configuration)
+- [Points d'accès API](#points-daccès-api)
+- [Tests et charge](#tests-et-charge)
+- [Déploiement](#déploiement)
+- [État du projet](#état-du-projet)
+- [Auteur](#auteur)
+
+---
+
+## Vue d'ensemble
+
+Scalable Task API est une API REST conçue pour gérer des tâches et des comptes utilisateur dans un environnement Dockerisé. Le backend Django est prêt à évoluer horizontalement grâce à Nginx et Redis.
+
+## Architecture
+
+Diagramme de flux principal:
 
 Client → Nginx → Django (Web) → PostgreSQL
                          ↓
                        Redis
 
-Tech Stack:
+### Composants clés
 
-- Backend: Django, Django REST Framework
-- Database: PostgreSQL
-- Cache: Redis
-- Reverse Proxy: Nginx
-- Containerization: Docker, Docker Compose
-- Load Testing: k6, Locust
-- CI/CD: GitHub Actions
+- Nginx : reverse proxy et routage
+- Django : backend web et API REST
+- PostgreSQL : base de données relationnelle
+- Redis : cache et support futur d'asynchronisme
+- Docker : conteneurisation de l’application
+- Docker Compose : orchestration locale
 
-Project Structure:
+## Fonctionnalités
 
+- Authentification et gestion des comptes
+- CRUD complet pour les tâches
+- Interface de monitoring et administration via Django Admin
+- Architecture pensée pour la montée en charge
+- Environnements Docker pour développement et tests
+
+## Stack technique
+
+- Backend : Django, Django REST Framework
+- Base de données : PostgreSQL
+- Cache : Redis
+- Reverse proxy : Nginx
+- Conteneurisation : Docker, Docker Compose
+- Tests de charge : k6, Locust
+- CI/CD : GitHub Actions
+
+## Structure du projet
+
+```
 scalable-task-api/
 ├── backend/
 │   ├── apps/
@@ -41,97 +85,116 @@ scalable-task-api/
 │   └── k6_tests.js
 ├── .env.example
 └── README.md
+```
 
-Requirements:
+## Prérequis
 
 - Docker
 - Docker Compose
 
-Setup and Execution (Docker Only):
+## Installation et démarrage
 
-1. Clone the repository:
-git clone <your-repository-url>
+1. Cloner le dépôt :
+
+```bash
+git clone https://github.com/kevinManda17/scalable-task-api.git
 cd scalable-task-api
+```
 
-2. Configure environment variables:
-cp .env.example .env
+2. Copier le fichier d’exemple d’environnement :
 
-3. Start the application:
+```bash
+copy .env.example .env
+```
+
+3. Démarrer les services Docker :
+
+```bash
 docker compose -f docker/docker-compose.yml up --build
+```
 
-4. Apply migrations:
+4. Appliquer les migrations :
+
+```bash
 docker compose -f docker/docker-compose.yml exec web python manage.py migrate
+```
 
-5. Create superuser:
+5. Créer un superutilisateur :
+
+```bash
 docker compose -f docker/docker-compose.yml exec web python manage.py createsuperuser
+```
 
-6. Populate database:
+6. Peupler la base de données :
+
+```bash
 docker compose -f docker/docker-compose.yml exec web python manage.py shell < backend/populate_db.py
+```
 
-Access:
+## Configuration
 
-Application: http://localhost:8000
-Admin Panel: http://localhost:8000/admin
+- `.env.example` contient les variables d’environnement nécessaires.
+- Configurez les paramètres PostgreSQL, Redis et Django avant le démarrage.
 
-API Endpoints:
+## Points d'accès API
 
-Authentication:
-POST /api/accounts/register/
-POST /api/accounts/login/
-GET  /api/accounts/me/
+### Authentification
 
-Tasks:
-GET    /api/tasks/
-POST   /api/tasks/
-GET    /api/tasks/{id}/
-PUT    /api/tasks/{id}/
-DELETE /api/tasks/{id}/
+- `POST /api/accounts/register/`
+- `POST /api/accounts/login/`
+- `GET  /api/accounts/me/`
 
-Testing (Docker Only):
+### Tâches
 
-Run backend tests:
+- `GET    /api/tasks/`
+- `POST   /api/tasks/`
+- `GET    /api/tasks/{id}/`
+- `PUT    /api/tasks/{id}/`
+- `DELETE /api/tasks/{id}/`
+
+## Tests et charge
+
+### Tests unitaires
+
+```bash
 docker compose -f docker/docker-compose.yml exec web python manage.py test
+```
 
-Load testing with k6:
+### Tests de charge k6
+
+```bash
 docker run --rm -i grafana/k6 run - < tests/k6_tests.js
+```
 
-Load testing with Locust:
+### Tests de charge Locust
+
+```bash
 docker build -f docker/Dockerfile.locust -t locust .
 docker run -p 8089:8089 locust
+```
 
-Access Locust interface:
-http://localhost:8089
+Accéder à l’interface Locust : `http://localhost:8089`
 
-Scaling Strategy:
+## Déploiement
 
-The system is designed for horizontal scaling using multiple Django instances behind Nginx. The architecture supports load balancing and can be extended for high concurrency scenarios.
+La cible de déploiement idéale est un environnement cloud comme AWS EC2, où les conteneurs Docker sont exécutés derrière Nginx.
 
-Deployment Strategy:
+Étapes générales :
 
-Target environment includes AWS EC2 with Docker containers and Nginx as a reverse proxy.
+1. Construire l’image Docker
+2. Envoyer l’image vers un registre
+3. Déployer sur une instance cloud
+4. Configurer les variables d’environnement
+5. Lancer les conteneurs
 
-Steps:
-1. Build Docker image
-2. Push image to registry
-3. Deploy on EC2
-4. Configure environment variables
-5. Run containers
+## État du projet
 
-Important Notes:
+- API fonctionnelle
+- Environnement Docker stable
+- Scénarios de tests de charge prêts
+- Architecture prête pour l’extensibilité
 
-- All commands are executed inside Docker
-- No local Python execution is used
-- Redis is prepared for caching or asynchronous processing
-- Nginx handles reverse proxy and scaling
-
-Project Status:
-
-- API functional
-- Docker environment stable
-- Load testing ready
-- Scaling architecture prepared
-
-Author:
+## Auteur
 
 Kevin Manda
 Software Engineering Project

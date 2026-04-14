@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🚀 Scalable Task API - Quick Start"
+echo "Scalable Task API - Quick Start"
 echo "===================================="
 
 # Colors for output
@@ -14,22 +14,22 @@ NC='\033[0m' # No Color
 # Check if Docker and Docker Compose are installed
 echo -e "${YELLOW}Checking prerequisites...${NC}"
 if ! command -v docker &> /dev/null; then
-    echo "❌ Docker is not installed. Please install Docker first."
+    echo "Docker is not installed. Please install Docker first."
     exit 1
 fi
 
 if ! command -v docker-compose &> /dev/null; then
-    echo "❌ Docker Compose is not installed. Please install Docker Compose first."
+    echo "Docker Compose is not installed. Please install Docker Compose first."
     exit 1
 fi
 
-echo -e "${GREEN}✓ Docker and Docker Compose are installed${NC}"
+echo -e "${GREEN}Docker and Docker Compose are installed${NC}"
 
 # Check if .env file exists
 if [ ! -f .env ]; then
     echo -e "${YELLOW}Creating .env file from .env.example...${NC}"
     cp .env.example .env
-    echo -e "${YELLOW}⚠️  Please edit .env file with your values!${NC}"
+    echo -e "${YELLOW}Please edit .env file with your values.${NC}"
 fi
 
 # Start Docker Compose
@@ -64,7 +64,7 @@ docker-compose -f docker/docker-compose.yml exec -T web \
     bash -c 'echo "from django.contrib.auth import get_user_model; User = get_user_model(); user = User.objects.get(username=\"admin\"); user.set_password(\"admin123\"); user.save(); print(\"Superuser password set!\")" | python manage.py shell --settings=config.settings.dev' || true
 
 echo ""
-echo -e "${GREEN}✅ Application started successfully!${NC}"
+echo -e "${GREEN}Application started successfully!${NC}"
 echo ""
 echo "Access points:"
 echo "  - Web Interface: http://localhost:8000"

@@ -1,23 +1,23 @@
 # Quick Start Script for Scalable Task API - Windows PowerShell
 
-Write-Host "🚀 Scalable Task API - Quick Start for Windows" -ForegroundColor Cyan
+Write-Host "Scalable Task API - Quick Start for Windows" -ForegroundColor Cyan
 Write-Host "==============================================" -ForegroundColor Cyan
 
 # Check if Docker is installed
 Write-Host "Checking prerequisites..." -ForegroundColor Yellow
 try {
     docker --version | Out-Null
-    Write-Host "✓ Docker is installed" -ForegroundColor Green
+    Write-Host "Docker is installed" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Docker is not installed. Please install Docker Desktop for Windows." -ForegroundColor Red
+    Write-Host "Docker is not installed. Please install Docker Desktop for Windows." -ForegroundColor Red
     exit 1
 }
 
 try {
     docker-compose --version | Out-Null
-    Write-Host "✓ Docker Compose is installed" -ForegroundColor Green
+    Write-Host "Docker Compose is installed" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Docker Compose is not installed. Please install Docker Desktop for Windows." -ForegroundColor Red
+    Write-Host "Docker Compose is not installed. Please install Docker Desktop for Windows." -ForegroundColor Red
     exit 1
 }
 
@@ -25,7 +25,7 @@ try {
 if (-not (Test-Path ".env")) {
     Write-Host "Creating .env file from .env.example..." -ForegroundColor Yellow
     Copy-Item ".env.example" ".env"
-    Write-Host "⚠️  Please edit .env file with your values!" -ForegroundColor Yellow
+    Write-Host "Please edit .env file with your values." -ForegroundColor Yellow
 }
 
 # Start Docker Compose
@@ -55,19 +55,19 @@ from django.db import IntegrityError
 User = get_user_model()
 try:
     user = User.objects.create_superuser('admin', 'admin@example.com', 'admin123')
-    print('✓ Superuser created successfully')
+    print('Superuser created successfully')
 except IntegrityError:
     user = User.objects.get(username='admin')
     user.set_password('admin123')
     user.save()
-    print('✓ Superuser password updated')
+    print('Superuser password updated')
 "@
 
 docker-compose -f docker/docker-compose.yml exec -T web `
     python manage.py shell --settings=config.settings.dev -c $createUserCmd || $true
 
 Write-Host ""
-Write-Host "✅ Application started successfully!" -ForegroundColor Green
+Write-Host "Application started successfully!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Access points:" -ForegroundColor Cyan
 Write-Host "  - Web Interface: http://localhost:8000" -ForegroundColor White
