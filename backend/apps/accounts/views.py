@@ -5,6 +5,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
+from rest_framework.permissions import IsAdminUser
+from django.contrib.auth import get_user_model
+
 
 User = get_user_model()
 
@@ -64,3 +67,23 @@ class MeView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+
+
+class AdminUserListView(APIView):
+    """Liste tous les utilisateurs (admin uniquement)"""
+    permission_classes = [IsAdminUser]
+    
+    def get(self, request):
+        users = User.objects.all().values('id', 'username', 'email', 'is_active', 'date_joined', 'last_login')
+        return Response(users)
+    
+    def delete(self, request, username):
+        """Supprimer un utilisateur (admin uniquement)"""
+        try:
+            user = User.objects.get(username=username)
+            if user.username == 'admin':
+                return Response({'error': 'Cannot delete admin user'}, status=status.HTTP_403_FORBIDDEN)
+            user.delete()
+            return Response({'message': 'User deleted'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)

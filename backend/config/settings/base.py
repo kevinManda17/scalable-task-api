@@ -73,6 +73,10 @@ AUTH_USER_MODEL = 'accounts.User'
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
@@ -131,11 +135,11 @@ SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False').lower() == 'true
 X_FRAME_OPTIONS = 'DENY'
 
 
-print("DB NAME =", os.getenv("POSTGRES_DB"))
-print("DB USER =", os.getenv("POSTGRES_USER"))
-print("DB PASSWORD =", os.getenv("POSTGRES_PASSWORD"))
-print("DB HOST =", os.getenv("POSTGRES_HOST"))
-print("DB PORT =", os.getenv("POSTGRES_PORT"))
-print("REDIS URL =", os.getenv("REDIS_URL"))
+# print("DB NAME =", os.getenv("POSTGRES_DB"))
+# print("DB USER =", os.getenv("POSTGRES_USER"))
+# print("DB PASSWORD =", os.getenv("POSTGRES_PASSWORD"))
+# print("DB HOST =", os.getenv("POSTGRES_HOST"))
+# print("DB PORT =", os.getenv("POSTGRES_PORT"))
+# print("REDIS URL =", os.getenv("REDIS_URL"))
 
 

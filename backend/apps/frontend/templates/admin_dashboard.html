@@ -1,0 +1,583 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Administration - Task API{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div class="page-header">
+        <h1><i class="fas fa-crown"></i> Administration</h1>
+        <p>Gestion complète des utilisateurs et des tâches</p>
+    </div>
+
+    <!-- Menu d'onglets -->
+    <div class="card" style="padding: 0.5rem; margin-bottom: 2rem;">
+        <div style="display: flex; gap: 1rem;">
+            <button class="btn btn-outline active" id="tab-users" onclick="showTab('users')">
+                <i class="fas fa-users"></i> Utilisateurs
+            </button>
+            <button class="btn btn-outline" id="tab-all-tasks" onclick="showTab('all-tasks')">
+                <i class="fas fa-list-check"></i> Toutes les tâches
+            </button>
+            <button class="btn btn-outline" id="tab-stats" onclick="showTab('stats')">
+                <i class="fas fa-chart-bar"></i> Statistiques
+            </button>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- ONGLET : UTILISATEURS                         -->
+    <!-- ============================================ -->
+    <div id="panel-users" class="tab-panel">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="total-users">0</div>
+                <div class="stat-label">Utilisateurs totaux</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="active-users">0</div>
+                <div class="stat-label">Actifs (dernières 24h)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-tasks-all">0</div>
+                <div class="stat-label">Tâches totales</div>
+            </div>
+        </div>
+
+        <!-- Création d'utilisateur -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-user-plus"></i> Créer un utilisateur</h2>
+            </div>
+            <form id="create-user-form">
+                {% csrf_token %}
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                    <input type="text" name="username" class="form-control" placeholder="Nom d'utilisateur" required>
+                    <input type="email" name="email" class="form-control" placeholder="Email" required>
+                    <input type="password" name="password" class="form-control" placeholder="Mot de passe" required>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Créer
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Liste des utilisateurs -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-list"></i> Liste des utilisateurs</h2>
+                <input type="text" id="user-search" class="form-control" 
+                       placeholder="Rechercher..." style="max-width: 250px;">
+            </div>
+            <div id="users-list-container">
+                <div class="empty-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Chargement des utilisateurs...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- ONGLET : TOUTES LES TÂCHES                   -->
+    <!-- ============================================ -->
+    <div id="panel-all-tasks" class="tab-panel" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-tasks"></i> Toutes les tâches du système</h2>
+                <div style="display: flex; gap: 1rem;">
+                    <input type="text" id="admin-task-search" class="form-control" 
+                           placeholder="Rechercher..." style="max-width: 250px;">
+                    <select id="admin-task-filter" class="form-control" style="max-width: 150px;">
+                        <option value="all">Toutes</option>
+                        <option value="false">En cours</option>
+                        <option value="true">Terminées</option>
+                    </select>
+                </div>
+            </div>
+            <div id="all-tasks-list-container">
+                <div class="empty-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Chargement des tâches...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- ONGLET : STATISTIQUES                        -->
+    <!-- ============================================ -->
+    <div id="panel-stats" class="tab-panel" style="display: none;">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="stat-total-users">0</div>
+                <div class="stat-label">Utilisateurs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="stat-total-tasks">0</div>
+                <div class="stat-label">Tâches totales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="stat-completed-tasks">0</div>
+                <div class="stat-label">Tâches terminées</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="stat-completion-rate">0%</div>
+                <div class="stat-label">Taux global</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-chart-simple"></i> Top 10 des utilisateurs les plus actifs</h2>
+            </div>
+            <div id="top-users-list">
+                <div class="empty-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Chargement...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.tab-panel {
+    transition: opacity 0.3s ease;
+}
+
+.btn-outline.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.user-card {
+    background: var(--light);
+    border-radius: var(--radius-sm);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid var(--primary);
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.user-email {
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+.user-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.user-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.badge {
+    background: var(--primary);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: var(--success);
+}
+
+.badge-danger {
+    background: var(--danger);
+}
+</style>
+
+<script>
+const API_BASE = '/api';
+let currentUser = null;
+let allUsers = [];
+let allTasks = [];
+
+// ============================================
+// INITIALISATION
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        window.location.href = '{% url "frontend:login" %}';
+        return;
+    }
+    
+    // Vérifier si l'utilisateur est admin
+    fetch(`${API_BASE}/accounts/me/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.json())
+    .then(user => {
+        currentUser = user;
+        if (user.username !== 'admin') {
+            alert('Accès réservé à l\'administrateur');
+            window.location.href = '{% url "frontend:dashboard" %}';
+            return;
+        }
+        loadUsers();
+        loadAllTasks();
+        loadStats();
+    });
+    
+    // Écouteurs d'événements
+    document.getElementById('create-user-form').addEventListener('submit', createUser);
+    document.getElementById('user-search').addEventListener('input', filterUsers);
+    document.getElementById('admin-task-search').addEventListener('input', filterAllTasks);
+    document.getElementById('admin-task-filter').addEventListener('change', filterAllTasks);
+});
+
+// ============================================
+// GESTION DES ONGLETS
+// ============================================
+function showTab(tabName) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.btn-outline').forEach(b => b.classList.remove('active'));
+    
+    document.getElementById(`panel-${tabName}`).style.display = 'block';
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+}
+
+// ============================================
+// GESTION DES UTILISATEURS
+// ============================================
+function loadUsers() {
+    const token = localStorage.getItem('access_token');
+    
+    // Note: Cette vue nécessite une permission admin dans votre API
+    fetch('/api/admin/users/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => {
+        if (response.status === 404) {
+            // Fallback : utiliser l'API publique des tâches pour déduire les utilisateurs
+            return fetch(`${API_BASE}/tasks/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        }
+        return response;
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (Array.isArray(data)) {
+            allUsers = data;
+        } else {
+            // Extraire les utilisateurs uniques des tâches
+            const tasks = data.results || data;
+            const userMap = new Map();
+            tasks.forEach(task => {
+                if (task.user && !userMap.has(task.user)) {
+                    userMap.set(task.user, { 
+                        username: task.user, 
+                        taskCount: 0,
+                        completedCount: 0
+                    });
+                }
+                if (task.user) {
+                    const u = userMap.get(task.user);
+                    u.taskCount++;
+                    if (task.completed) u.completedCount++;
+                }
+            });
+            allUsers = Array.from(userMap.entries()).map(([username, stats]) => ({
+                username: username,
+                email: '',
+                task_count: stats.taskCount,
+                completed_count: stats.completedCount
+            }));
+        }
+        
+        document.getElementById('total-users').textContent = allUsers.length;
+        renderUsersList(allUsers);
+    });
+}
+
+function renderUsersList(users) {
+    const container = document.getElementById('users-list-container');
+    
+    if (users.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>Aucun utilisateur</p></div>';
+        return;
+    }
+    
+    container.innerHTML = users.map(user => `
+        <div class="user-card">
+            <div class="user-info">
+                <div class="user-name">
+                    ${escapeHtml(user.username)} 
+                    ${user.username === 'admin' ? '<span class="badge badge-danger">Admin</span>' : ''}
+                </div>
+                <div class="user-email">${escapeHtml(user.email || 'Email non renseigné')}</div>
+                <div class="user-stats">
+                    <span><i class="fas fa-tasks"></i> ${user.task_count || 0} tâches</span>
+                    <span><i class="fas fa-check-circle"></i> ${user.completed_count || 0} terminées</span>
+                </div>
+            </div>
+            <div class="user-actions">
+                <button class="btn btn-outline btn-sm" onclick="viewUserTasks('${user.username}')">
+                    <i class="fas fa-eye"></i> Voir tâches
+                </button>
+                ${user.username !== 'admin' ? `
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.username}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function createUser(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = {
+        username: form.querySelector('input[name="username"]').value,
+        email: form.querySelector('input[name="email"]').value,
+        password: form.querySelector('input[name="password"]').value
+    };
+    
+    const token = localStorage.getItem('access_token');
+    
+    fetch(`${API_BASE}/accounts/register/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.access) {
+            form.reset();
+            loadUsers();
+            alert('Utilisateur créé avec succès');
+        } else {
+            alert('Erreur: ' + JSON.stringify(data));
+        }
+    });
+}
+
+function deleteUser(username) {
+    if (!confirm(`Supprimer définitivement l'utilisateur "${username}" ?`)) return;
+    
+    const token = localStorage.getItem('access_token');
+    
+    fetch(`${API_BASE}/admin/users/${username}/`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            loadUsers();
+            loadAllTasks();
+        } else {
+            alert('Erreur lors de la suppression');
+        }
+    });
+}
+
+function viewUserTasks(username) {
+    showTab('all-tasks');
+    document.getElementById('admin-task-search').value = username;
+    filterAllTasks();
+}
+
+function filterUsers() {
+    const search = document.getElementById('user-search').value.toLowerCase();
+    const filtered = allUsers.filter(u => 
+        u.username.toLowerCase().includes(search) || 
+        (u.email && u.email.toLowerCase().includes(search))
+    );
+    renderUsersList(filtered);
+}
+
+// ============================================
+// GESTION DE TOUTES LES TÂCHES
+// ============================================
+function loadAllTasks() {
+    const token = localStorage.getItem('access_token');
+    
+    fetch(`${API_BASE}/tasks/?limit=1000`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.json())
+    .then(data => {
+        allTasks = data.results || data;
+        document.getElementById('total-tasks-all').textContent = allTasks.length;
+        renderAllTasksList(allTasks);
+    });
+}
+
+function renderAllTasksList(tasks) {
+    const container = document.getElementById('all-tasks-list-container');
+    
+    if (tasks.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-tasks"></i><p>Aucune tâche</p></div>';
+        return;
+    }
+    
+    // Grouper par utilisateur
+    const tasksByUser = {};
+    tasks.forEach(task => {
+        const username = typeof task.user === 'string' ? task.user : task.user?.username || 'Inconnu';
+        if (!tasksByUser[username]) tasksByUser[username] = [];
+        tasksByUser[username].push(task);
+    });
+    
+    container.innerHTML = Object.entries(tasksByUser).map(([username, userTasks]) => `
+        <div style="margin-bottom: 1.5rem;">
+            <h3 style="margin-bottom: 0.5rem; color: var(--primary);">
+                <i class="fas fa-user"></i> ${escapeHtml(username)} 
+                <span class="badge">${userTasks.length} tâches</span>
+            </h3>
+            <div class="task-list">
+                ${userTasks.map(task => `
+                    <div class="task-item ${task.completed ? 'completed' : ''}">
+                        <div class="task-content">
+                            <div class="task-title">${escapeHtml(task.title)}</div>
+                            <div class="task-description">${escapeHtml(task.description || '—')}</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-calendar"></i> ${new Date(task.created_at).toLocaleDateString('fr-FR')}</span>
+                                <span><i class="far fa-${task.completed ? 'check-circle' : 'clock'}"></i> ${task.completed ? 'Terminée' : 'En cours'}</span>
+                            </div>
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn btn-danger btn-sm" onclick="adminDeleteTask(${task.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+function adminDeleteTask(taskId) {
+    if (!confirm('Supprimer cette tâche ?')) return;
+    
+    const token = localStorage.getItem('access_token');
+    
+    fetch(`${API_BASE}/tasks/${taskId}/`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(() => {
+        loadAllTasks();
+        loadUsers();
+        loadStats();
+    });
+}
+
+function filterAllTasks() {
+    const search = document.getElementById('admin-task-search').value.toLowerCase();
+    const filter = document.getElementById('admin-task-filter').value;
+    
+    let filtered = allTasks;
+    
+    if (search) {
+        filtered = filtered.filter(t => {
+            const username = typeof t.user === 'string' ? t.user : t.user?.username || '';
+            return username.toLowerCase().includes(search) ||
+                   t.title.toLowerCase().includes(search) ||
+                   (t.description && t.description.toLowerCase().includes(search));
+        });
+    }
+    
+    if (filter !== 'all') {
+        filtered = filtered.filter(t => t.completed === (filter === 'true'));
+    }
+    
+    renderAllTasksList(filtered);
+}
+
+// ============================================
+// STATISTIQUES
+// ============================================
+function loadStats() {
+    const token = localStorage.getItem('access_token');
+    
+    fetch(`${API_BASE}/tasks/?limit=1000`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const tasks = data.results || data;
+        const total = tasks.length;
+        const completed = tasks.filter(t => t.completed).length;
+        const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+        
+        document.getElementById('stat-total-tasks').textContent = total;
+        document.getElementById('stat-completed-tasks').textContent = completed;
+        document.getElementById('stat-completion-rate').textContent = rate + '%';
+        
+        // Top utilisateurs
+        const userStats = {};
+        tasks.forEach(task => {
+            const username = typeof task.user === 'string' ? task.user : task.user?.username || 'Inconnu';
+            if (!userStats[username]) userStats[username] = { total: 0, completed: 0 };
+            userStats[username].total++;
+            if (task.completed) userStats[username].completed++;
+        });
+        
+        const topUsers = Object.entries(userStats)
+            .sort((a, b) => b[1].total - a[1].total)
+            .slice(0, 10);
+        
+        const container = document.getElementById('top-users-list');
+        
+        if (topUsers.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Aucune donnée</p></div>';
+            return;
+        }
+        
+        container.innerHTML = topUsers.map(([username, stats]) => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border);">
+                <span><i class="fas fa-user"></i> ${escapeHtml(username)}</span>
+                <div style="display: flex; gap: 1rem;">
+                    <span><i class="fas fa-tasks"></i> ${stats.total} tâches</span>
+                    <span><i class="fas fa-check-circle"></i> ${stats.completed} terminées</span>
+                    <span><strong>${Math.round((stats.completed / stats.total) * 100)}%</strong></span>
+                </div>
+            </div>
+        `).join('');
+    });
+}
+
+// ============================================
+// UTILITAIRES
+// ============================================
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

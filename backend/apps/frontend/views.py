@@ -26,3 +26,8 @@ class DashboardView(TemplateView):
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class TasksView(TemplateView):
     template_name = 'tasks.html'
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class AdminView(TemplateView):
+    template_name = 'admin_dashboard.html'
