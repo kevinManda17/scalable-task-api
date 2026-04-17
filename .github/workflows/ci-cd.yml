@@ -2,9 +2,9 @@ name: CI/CD Pipeline - Complete Suite
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main]
 
 env:
   REGISTRY: ghcr.io
